@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "signpost"
+version = "0.0.0"
+description = "A self-hosted URL redirect service"
+authors = ["Oscar Peace <oscar@oscarcp.net>"]
+license = "GPLv3"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+flask = "^3.1.1"
+flask-limiter = "^3.12"
+flask-compress = "^1.17"
+qrcode = "^8.2"
+pillow = "^11.2.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
