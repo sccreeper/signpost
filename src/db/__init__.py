@@ -1,0 +1,1 @@
+from src.db.db import init_db

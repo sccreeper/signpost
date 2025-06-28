@@ -1,0 +1,19 @@
+services:
+  signpost:
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    container_name: signpost
+    environment:
+      - SECRET
+      - DEBUG
+      - RATE_LIMIT
+      - DATA_VERSION=0
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - "~/.signpost:/var/lib/signpost"
+    restart: unless-stopped
