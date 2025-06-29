@@ -19,7 +19,7 @@ class URLModel(BaseModel):
 
     id: Mapped[int] = mapped_column(Integer(), primary_key=True)
 
-    slug: Mapped[str] = mapped_column(String(128), unique=True)
+    slug: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     hits: Mapped[int] = mapped_column(Integer(), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean(), nullable=False)
     opaque: Mapped[bool] = mapped_column(Boolean(), nullable=False)

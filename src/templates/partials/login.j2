@@ -1,0 +1,20 @@
+<h2>Login</h2>
+
+{% for field, error_list in form.errors.items() %}
+
+{% for error in error_list %}
+    <p style="color: red;">{{ error }}</p>
+{% endfor %}
+
+{% endfor %}
+
+<form hx-post="/admin/login" hx-target="#content-block">
+
+    {{ form.csrf_token }}
+
+    {{form.pw.label}} 
+    {{form.pw()}}
+
+    <input type="submit" value="Login">
+
+</form>

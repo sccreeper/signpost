@@ -1,15 +1,15 @@
-from flask import Flask
 import os
 
-from src.shared import app, db
+from src.shared import app, htmx, DB_PATH
 from src.db import init_db
 
-app = Flask(__name__)
-init_db()
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+app.config["SECRET_KEY"] = os.environ["SECRET"]
 
-@app.route("/")
-def index():
-    return "Hello World!"
+init_db()
+htmx.init_app(app)
+
+from src.handlers import *
 
 if __name__ == "__main__":
     app.run(
