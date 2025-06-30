@@ -7,7 +7,12 @@
         <td><input type="checkbox" {{"checked" if data.opaque }} disabled/></td>
         <td>{{ "No password set" if data.password == None else "****" }}</td>
 
-        <td> <button hx-target="closest tr" hx-get="/ui/edit/{{ data.id }}" hx-swap="outerHTML">Edit</button> </td>
+        <td> 
+            <button hx-target="closest tr" hx-get="/ui/edit/{{ data.id }}" hx-swap="outerHTML">Edit</button> 
+            <button hx-target="closest tr" hx-delete="/api/url/delete/{{ data.id }}" hx-swap="outerHTML" hx-confirm="Are you sure?">Delete</button> 
+            <a href="/api/url/qr/{{ data.id }}" download="">QR Code</a>
+        
+        </td>
     </tr>
 {% endmacro %}
 

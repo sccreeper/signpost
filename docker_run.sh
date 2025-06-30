@@ -16,5 +16,12 @@ exit 1
 
 fi
 
+if ! [[ -n "$HOST" ]]; then
+
+printf "Error: No host (HOST) set\n"
+exit 1
+
+fi
+
 docker compose build
 docker compose up -d

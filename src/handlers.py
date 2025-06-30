@@ -7,6 +7,7 @@ from flask import (
     abort,
     make_response,
     jsonify,
+    send_file
 )
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 from flask_wtf import csrf
@@ -15,6 +16,9 @@ from datetime import datetime
 from random import randint
 from jsonschema import validate, ValidationError
 from argon2 import PasswordHasher
+import qrcode
+from io import BytesIO
+import os
 
 from src.shared import app, htmx, API_SECRET_PATH
 from src.forms import LoginForm, CreateURLForm, EditURLForm
@@ -368,16 +372,35 @@ def route_modify():
         
 
 
-@app.route("/api/url/delete", methods=["DELETE"])
+@app.route("/api/url/delete/<url_id>", methods=["DELETE"])
 @login_required
-def route_delete():
-    pass
+def route_delete(url_id = None):
+    url = db.session.query(URLModel).where(URLModel.id == url_id).first()
+
+    if url == None:
+        return abort(404)
+
+    db.session.delete(url)
+    db.session.commit()
+
+    return ""
 
 
-@app.route("/api/url/qr", methods=["GET"])
+@app.route("/api/url/qr/<url_id>", methods=["GET"])
 @login_required
-def route_gen_qr():
-    pass
+def route_gen_qr(url_id = None):
+    
+    url = db.session.query(URLModel).where(URLModel.id == url_id).first()
+
+    if url == None:
+        return abort(404)
+    
+    qr = qrcode.make(f"{os.environ['HOST']}/{url.slug}")
+    buffer = BytesIO()
+    qr.save(buffer)
+    buffer.seek(0)
+
+    return send_file(buffer, download_name=f"qr_{url.slug}.png", mimetype="image/png")
 
 
 @app.route("/api/settings/change_password", methods=["POST"])
