@@ -48,6 +48,12 @@ modify_url_schema = {
         "slug": {
           "type": "string"
         },
+        "url": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
         "opaque": {
           "type": "boolean"
         },
@@ -57,8 +63,10 @@ modify_url_schema = {
       },
       "required": [
         "slug",
+        "url",
+        "enabled",
         "opaque",
-        "hidden"
+        "password"
       ]
     }
   },

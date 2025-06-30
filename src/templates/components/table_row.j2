@@ -3,8 +3,39 @@
         <td>{{ data.slug }}</td>
         <td>{{ data.url }}</td>
         <td>{{ data.hits }}</td>
-        <td>{{ data.enabled }}</td>
-        <td>{{ data.opaque }}</td>
+        <td><input type="checkbox" {{"checked" if data.enabled }} disabled/></td>
+        <td><input type="checkbox" {{"checked" if data.opaque }} disabled/></td>
         <td>{{ "No password set" if data.password == None else "****" }}</td>
+
+        <td> <button hx-target="closest tr" hx-get="/ui/edit/{{ data.id }}" hx-swap="outerHTML">Edit</button> </td>
+    </tr>
+{% endmacro %}
+
+{% macro edit_url_row(form, hits, password_set, errors) %}
+    <tr hx-patch="/api/url/modify" hx-target="this" hx-trigger="click from:find input[type=submit]" hx-include="this" hx-swap="outerHTML">
+
+        {{ form.csrf_token }}
+
+        {{ form.id() }}
+
+        <td>{{ form.slug() }}</td>
+        <td>{{ form.url() }}</td>
+        <td>{{ hits }}</td>
+        <td>{{ form.enabled() }}</td>
+        <td>{{ form.opaque() }}</td>
+        <td>{{ form.password() }} {{ "(No password set)" if password_set else "Password set" }}</td>
+
+        <td> 
+
+            <input type="submit" value="Apply"/>
+
+            {% for field, error_list in errors.items() %}
+
+            {% for error in error_list %}
+                <p style="color: red;">{{ error }}</p>
+            {% endfor %}
+
+            {% endfor %}
+        </td>
     </tr>
 {% endmacro %}
