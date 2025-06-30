@@ -1,0 +1,7 @@
+{% for field, error_list in errors.items() %}
+
+{% for error in error_list %}
+    <p style="color: red;">{{ error }}</p>
+{% endfor %}
+
+{% endfor %}

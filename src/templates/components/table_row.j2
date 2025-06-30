@@ -1,0 +1,10 @@
+{% macro url_table_row(data) %}
+    <tr>
+        <td>{{ data.slug }}</td>
+        <td>{{ data.url }}</td>
+        <td>{{ data.hits }}</td>
+        <td>{{ data.enabled }}</td>
+        <td>{{ data.opaque }}</td>
+        <td>{{ "No password set" if data.password == None else "****" }}</td>
+    </tr>
+{% endmacro %}

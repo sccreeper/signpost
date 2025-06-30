@@ -1,11 +1,19 @@
-from flask import render_template, session, redirect, request, abort, make_response
-from werkzeug.exceptions import BadRequest, Forbidden
+from flask import render_template, render_template_string, session, redirect, request, abort, make_response, jsonify
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 from flask_wtf import csrf
 from functools import wraps
 from datetime import datetime
+from random import randint
+from jsonschema import validate, ValidationError
 
 from src.shared import app, htmx, API_SECRET_PATH
-from src.forms import LoginForm
+from src.forms import LoginForm, CreateURLForm
+from src.db.models import URLModel
+from src.db.db import db
+from src.db.util import gen_random_string
+from src.schemas import create_url_schema
+
+MAX_ID_SIZE = (2**63)-1
 
 def login_required(f):
     @wraps(f)
@@ -61,10 +69,18 @@ def route_login():
 @app.route("/admin/main", methods=["GET"])
 @login_required
 def route_main():
-    if htmx:
-        return render_template("partials/main.j2")
-    else:
-        return render_template("main.j2")
+
+    csrf.generate_csrf()
+
+    # get urls
+
+    urls = db.session.query(URLModel).all()
+
+    return render_template(
+        "partials/main.j2" if htmx else "main.j2",
+        urls=urls,
+        url_form=CreateURLForm()
+    )
     
 @app.route("/admin/logout", methods=["POST"])
 @login_required
@@ -80,9 +96,105 @@ def route_logout():
 
     return resp
 
+@app.route("/<slug>")
+def route_redirect(slug=None):
+    
+    url = db.session.query(URLModel).where(URLModel.slug == slug).first()
+    if url == None:
+        return abort(NotFound.code)
+
+    # Update hits
+
+    db.session.query(URLModel).where(URLModel.slug == slug).update({URLModel.hits: URLModel.hits + 1})
+    db.session.commit()
+    
+    if url.opaque:
+         return f"<script>window.location.replace('{url.url}')</script>"
+    elif url.password != None:
+        pass
+    else:
+        return redirect(url.url)
+
 @app.route("/api/url/create", methods=["POST"])
 def route_add():
-    pass
+    url_id: str = ""
+    url_slug: str = ""
+    url: str = ""
+
+    # htmx (web interface) or JSON api
+
+    if htmx:
+    
+        form: CreateURLForm = CreateURLForm()
+
+        if not form.validate():
+            
+            resp = make_response(render_template("components/error_list.j2", errors=form.errors))
+            resp.headers.add("HX-Reswap", "innerHTML")
+            resp.headers.add("HX-Retarget", "#error-message")
+            return resp
+        
+        url_slug = form.slug.data.strip()
+        url = form.url.data
+
+    else:
+        
+        try:
+           validate(instance=request.json, schema=create_url_schema)
+        except ValidationError:
+            return abort(BadRequest.code)
+        
+        url_slug = str(request.json["slug"]).strip()
+        url = request.json["url"]
+
+    # generate ID
+
+    url_id = randint(-MAX_ID_SIZE, MAX_ID_SIZE)
+
+    while db.session.query(URLModel).where(URLModel.id == url_id).first() != None:
+        url_id = randint(-MAX_ID_SIZE, MAX_ID_SIZE)
+
+    if url_slug == "":
+        url_slug = gen_random_string(4)
+
+        while db.session.query(URLModel).where(URLModel.slug == url_slug).first() != None:
+            url_slug = gen_random_string(4)
+    else:
+
+        if db.session.query(URLModel).where(URLModel.slug == url_slug).first() != None:
+            resp = make_response(render_template("components/error_list.j2", errors={"slug_error" : ["Slug already in use"]}))
+            resp.headers.add("HX-Reswap", "innerHTML")
+            resp.headers.add("HX-Retarget", "#error-message")
+            return resp
+    
+    db.session.add(
+        URLModel(
+            id=url_id,
+            url=url,
+            slug=url_slug,
+        )
+    )
+
+    db.session.commit()
+
+    if htmx:
+
+        # get record as added to db
+
+        latest = db.session.query(URLModel).order_by(URLModel.created.desc()).first()
+
+        return render_template_string(
+            """
+            {%import "components/table_row.j2" as row %}
+
+            {{ row.url_table_row(data) }}
+
+            """,
+            data=latest
+        )
+
+    else:
+        return jsonify({"id" : url_id})
 
 @app.route("/api/url/modify", methods=["PATCH"])
 def route_modify():

@@ -1,7 +1,44 @@
+{% import "components/table_row.j2" as row %}
+
 <h2>Main</h2>
 
 <div style="float: right;">
     <button hx-post="/admin/logout" hx-confirm="Are you sure you want to logout?">Logout</button>
 </div>
 
-<p>Hello World</p>
+<section id="error-message" style="color: red;"></section>
+
+<form hx-post="/api/url/create" hx-target="#url-table" hx-swap="beforeend">
+    {{ url_form.csrf_token }}
+
+    {{ url_form.slug.label }}
+    {{ url_form.slug() }}
+
+    {{ url_form.url.label }}
+    {{ url_form.url() }}
+
+    <input type="submit" value="Create"/>
+</form>
+
+<table>
+
+<thead>
+    <td>Slug</td>
+    <td>URL</td>
+    <td>Hits</td>
+    <td>Enabled</td>
+    <td>Opaque</td>
+    <td>Password</td>
+</thead>
+
+<tbody id="url-table">
+
+{% for url in urls %}
+
+{{ row.url_table_row(url) }}
+
+{% endfor %}
+
+</tbody>
+
+</table>

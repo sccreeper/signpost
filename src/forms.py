@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import PasswordField, Field
-from wtforms.validators import DataRequired, Length, ValidationError
+from wtforms import PasswordField, Field, StringField, URLField
+from wtforms.validators import DataRequired, ValidationError, URL
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
@@ -20,3 +20,7 @@ def _pw_validator(form: FlaskForm, field: Field):
 
 class LoginForm(FlaskForm):
     pw = PasswordField("Password: ", validators=[DataRequired("Please enter a password"), _pw_validator])
+
+class CreateURLForm(FlaskForm):
+    url = URLField("URL: ", validators=[URL(), DataRequired("Please enter a URL")])
+    slug = StringField("Slug (optional): ")

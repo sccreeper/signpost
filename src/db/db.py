@@ -1,33 +1,13 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Integer, String, DateTime, Boolean, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
-from datetime import datetime
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 import os
 import subprocess
 from argon2 import PasswordHasher
 import uuid
 
-from src.shared import db, app, DATA_VERSION_PATH, DB_PATH, PW_BIN_PATH, API_SECRET_PATH
-
-
-class BaseModel(DeclarativeBase):
-    pass
-
-
-class URLModel(BaseModel):
-    __tablename__ = "urls"
-
-    id: Mapped[int] = mapped_column(Integer(), primary_key=True)
-
-    slug: Mapped[str] = mapped_column(String(128), unique=True, index=True)
-    hits: Mapped[int] = mapped_column(Integer(), nullable=False)
-    enabled: Mapped[bool] = mapped_column(Boolean(), nullable=False)
-    opaque: Mapped[bool] = mapped_column(Boolean(), nullable=False)
-    password: Mapped[str] = mapped_column(String())
-
-    modified: Mapped[datetime] = mapped_column(DateTime(), nullable=False)
-    created: Mapped[datetime] = mapped_column(DateTime(), nullable=False)
-
+from src.shared import DATA_VERSION_PATH, DB_PATH, PW_BIN_PATH, API_SECRET_PATH
+from src.db.models import BaseModel
 
 def v0_migrate():
     # Initial version, i.e. no data
@@ -71,7 +51,6 @@ def migrate(old_ver: int, cur_ver: int):
 
 
 def init_db():
-    global db
 
     if not os.path.exists(DATA_VERSION_PATH):
         migrate(-1, int(os.environ["DATA_VERSION"]))
@@ -86,4 +65,4 @@ def init_db():
         if old_ver != cur_ver:
             migrate(old_ver, cur_ver)
 
-    db = SQLAlchemy(app=app, model_class=BaseModel)
+db: SQLAlchemy = SQLAlchemy(model_class=BaseModel)
