@@ -4,30 +4,40 @@
 
 <head>
 
-<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
 
-<title>{% block title %}
+    <title>{% block title %}{% endblock title %}</title>
 
-{% endblock title %}</title>
+    {% block head %}
 
-{% block head %}
-
-{% endblock head %}
+    {% endblock head %}
 
 </head>
 
 <body>
 
-<h1>signpost</h1>
-<hr>
+    <h1>signpost</h1>
 
-<div id="content-block">
+        <section id="nav">
 
-{% block body %}
+            {% if session["authenticated"] == true %}
 
-{% endblock body %}
+                {% include "components/navbar.j2" %}
 
-</div>
+            {% endif %}
+
+
+        </section>
+    
+    <hr>
+
+    <div id="content-block">
+
+        {% block body %}
+
+        {% endblock body %}
+
+    </div>
 
 </body>
 

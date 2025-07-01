@@ -7,7 +7,7 @@ from wtforms import (
     HiddenField,
     BooleanField,
 )
-from wtforms.validators import DataRequired, ValidationError, URL
+from wtforms.validators import DataRequired, ValidationError, URL, InputRequired, EqualTo
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
@@ -46,3 +46,9 @@ class EditURLForm(FlaskForm):
     enabled = BooleanField()
     opaque = BooleanField()
     password = PasswordField(render_kw={"placeholder": "Password"})
+
+class ChangePasswordForm(FlaskForm):
+    old_password = PasswordField("Old password: ", validators=[InputRequired("Please enter a password"), _pw_validator])
+
+    new_password = PasswordField("New password: ", validators=[InputRequired(), EqualTo("confirm_password", message="Passwords must match")])
+    confirm_password = PasswordField("Confirm password: ", validators=[InputRequired("Please enter a password")])

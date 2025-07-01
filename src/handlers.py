@@ -7,21 +7,22 @@ from flask import (
     abort,
     make_response,
     jsonify,
-    send_file
+    send_file,
 )
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound, Unauthorized
 from flask_wtf import csrf
 from functools import wraps
 from datetime import datetime
 from random import randint
 from jsonschema import validate, ValidationError
 from argon2 import PasswordHasher
+from argon2.exceptions import HashingError, VerifyMismatchError
 import qrcode
 from io import BytesIO
 import os
 
-from src.shared import app, htmx, API_SECRET_PATH
-from src.forms import LoginForm, CreateURLForm, EditURLForm
+from src.shared import app, htmx, API_SECRET_PATH, PW_BIN_PATH
+from src.forms import LoginForm, CreateURLForm, EditURLForm, ChangePasswordForm
 from src.db.models import URLModel
 from src.db.db import db
 from src.db.util import gen_random_string
@@ -40,7 +41,7 @@ def login_required(f):
                 token = fi.read()
 
                 if request.headers["Authorization"].split()[1] != token:
-                    return abort(Forbidden.code)
+                    return abort(Unauthorized.code)
 
         else:
 
@@ -48,8 +49,7 @@ def login_required(f):
                 return redirect("/admin/login")
             else:
                 if datetime.now().timestamp() - int(session["time"]) >= 3600:
-                    session["authenticated"] = False
-                    session["time"] = 0
+                    session.clear()
 
                     return redirect("/admin/login")
 
@@ -65,7 +65,12 @@ def route_login():
     form: LoginForm = LoginForm()
 
     if request.method == "GET":
-        return render_template("partials/login.j2" if htmx else "login.j2", form=form)
+        if "authenticated" in session:  # lazy way of checking login
+            return redirect("/admin/main")
+        else:
+            return render_template(
+                "partials/login.j2" if htmx else "login.j2", form=form
+            )
     elif request.method == "POST":
 
         if not htmx:
@@ -106,13 +111,23 @@ def route_logout():
     if not htmx:
         return abort(400)
 
-    session["authenticated"] = False
-    session["time"] = 0
+    session.clear()
 
     resp = make_response("")
     resp.headers["HX-Redirect"] = "/admin/login"
 
     return resp
+
+
+@app.route("/admin/settings")
+@login_required
+def route_settings():
+
+    csrf.generate_csrf()
+
+    form: ChangePasswordForm = ChangePasswordForm()
+
+    return render_template("partials/settings.j2" if htmx else "settings.j2", form=form)
 
 
 @app.route("/<slug>")
@@ -132,7 +147,33 @@ def route_redirect(slug=None):
     if url.opaque:
         return f"<script>window.location.replace('{url.url}')</script>"
     elif url.password != None:
-        pass
+        if "pw" not in request.args:
+            resp = make_response(
+                render_template_string(
+                    f"<p>This is a password protected URL. Please add <code>?pw=****</code> (replace **** with the password) to the end of the URL to access.</p>"
+                )
+            )
+            resp.status_code = Unauthorized.code
+
+            return resp
+        
+        # hash password and compare
+        
+        try:
+            hasher = PasswordHasher()
+            hasher.verify(url.password, request.args["pw"])
+        except VerifyMismatchError:
+            resp = make_response(
+                render_template_string(
+                    f"<p>Incorrect password supplied.</p>"
+                )
+            )
+            resp.status_code = 401
+
+            return resp
+        
+        return redirect(url.url)
+
     else:
         return redirect(url.url)
 
@@ -213,7 +254,9 @@ def route_add():
 
         # get record as added to db
 
-        last_added = db.session.query(URLModel).order_by(URLModel.created.desc()).first()
+        last_added = (
+            db.session.query(URLModel).order_by(URLModel.created.desc()).first()
+        )
 
         return render_template_string(
             """
@@ -291,7 +334,11 @@ def route_modify():
         new_url = form.url.data
         new_enabled = form.enabled.data
         new_opaque = form.opaque.data
-        new_password = None if form.password.data == None or form.password.data.strip() == "" else form.password.data
+        new_password = (
+            None
+            if form.password.data == None or form.password.data.strip() == ""
+            else form.password.data
+        )
 
         if (
             db.session.query(URLModel)
@@ -348,15 +395,19 @@ def route_modify():
             URLModel.url: new_url,
             URLModel.enabled: new_enabled,
             URLModel.opaque: new_opaque,
-            URLModel.password: PasswordHasher().hash(new_password) if new_password != None else None,
-            URLModel.modified: datetime.now()
+            URLModel.password: (
+                PasswordHasher().hash(new_password) if new_password != None else None
+            ),
+            URLModel.modified: datetime.now(),
         }
     )
 
     db.session.commit()
 
     if htmx:
-        last_modified = db.session.query(URLModel).order_by(URLModel.modified.desc()).first()
+        last_modified = (
+            db.session.query(URLModel).order_by(URLModel.modified.desc()).first()
+        )
 
         return render_template_string(
             """
@@ -366,15 +417,14 @@ def route_modify():
 
             """,
             data=last_modified,
-        ) 
+        )
     else:
         return ""
-        
 
 
 @app.route("/api/url/delete/<url_id>", methods=["DELETE"])
 @login_required
-def route_delete(url_id = None):
+def route_delete(url_id=None):
     url = db.session.query(URLModel).where(URLModel.id == url_id).first()
 
     if url == None:
@@ -388,13 +438,13 @@ def route_delete(url_id = None):
 
 @app.route("/api/url/qr/<url_id>", methods=["GET"])
 @login_required
-def route_gen_qr(url_id = None):
-    
+def route_gen_qr(url_id=None):
+
     url = db.session.query(URLModel).where(URLModel.id == url_id).first()
 
     if url == None:
         return abort(404)
-    
+
     qr = qrcode.make(f"{os.environ['HOST']}/{url.slug}")
     buffer = BytesIO()
     qr.save(buffer)
@@ -406,4 +456,41 @@ def route_gen_qr(url_id = None):
 @app.route("/api/settings/change_password", methods=["POST"])
 @login_required
 def route_change_password():
-    pass
+    if not htmx:
+        return abort(BadRequest.code)
+
+    csrf.generate_csrf()
+
+    form: ChangePasswordForm = ChangePasswordForm()
+
+    if not form.validate():
+        return render_template("partials/settings.j2", form=form)
+
+    hasher = PasswordHasher()
+
+    with open(PW_BIN_PATH, "w") as f:
+        hash: str = ""
+
+        try:
+            hash = hasher.hash(form.new_password.data)
+            f.write(hash)
+
+            return render_template(
+                "partials/settings.j2", form=form, status_message="Changed successfully"
+            )
+        except HashingError:
+            return render_template(
+                "partials/settings.j2",
+                form=form,
+                status_message="Unable to change password",
+            )
+
+
+@app.route("/api/settings/secret")
+@login_required
+def route_view_key():
+
+    f = open(API_SECRET_PATH, "r")
+    key = f.read()
+
+    return render_template_string(f"<p>API Key: {key}</p>")

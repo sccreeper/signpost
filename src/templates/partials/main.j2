@@ -1,5 +1,15 @@
 {% import "components/table_row.j2" as row %}
 
+{% if htmx %}
+
+<title hx-swap-oob="true">Main - Signpost</title>
+
+<section hx-swap-oob="true" id="nav">
+{% include "components/navbar.j2" %}
+</section>
+
+{% endif %}
+
 <h2>Main</h2>
 
 <div style="float: right;">
