@@ -133,7 +133,7 @@ def route_settings():
 @app.route("/<slug>")
 def route_redirect(slug=None):
 
-    url = db.session.query(URLModel).where(URLModel.slug == slug).first()
+    url = db.session.query(URLModel).where(URLModel.slug == slug, URLModel.enabled).first()
     if url == None:
         return abort(NotFound.code)
 
