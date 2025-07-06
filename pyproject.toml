@@ -19,6 +19,7 @@ flask-htmx = "^0.4.0"
 argon2-cffi = "^25.1.0"
 flask-wtf = "^1.2.2"
 jsonschema = "^4.24.0"
+gunicorn = "^23.0.0"
 
 
 [build-system]
