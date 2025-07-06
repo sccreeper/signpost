@@ -9,7 +9,7 @@ from flask import (
     jsonify,
     send_file,
 )
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound, Unauthorized
+from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 from flask_wtf import csrf
 from functools import wraps
 from datetime import datetime
@@ -20,6 +20,7 @@ from argon2.exceptions import HashingError, VerifyMismatchError
 import qrcode
 from io import BytesIO
 import os
+import uuid
 
 from src.shared import app, htmx, API_SECRET_PATH, PW_BIN_PATH
 from src.forms import LoginForm, CreateURLForm, EditURLForm, ChangePasswordForm
@@ -486,11 +487,24 @@ def route_change_password():
             )
 
 
-@app.route("/api/settings/secret")
+@app.route("/api/settings/secret/view")
 @login_required
 def route_view_key():
 
     f = open(API_SECRET_PATH, "r")
     key = f.read()
+    f.close()
 
-    return render_template_string(f"<p>API Key: {key}</p>")
+    return render_template_string(f"API Key: {key}")
+
+@app.route("/api/settings/secret/regenerate")
+@login_required
+def route_regen_key():
+
+    new_secret = str(uuid.uuid4())
+
+    f = open(API_SECRET_PATH, "w")
+    f.write(new_secret)
+    f.close()
+
+    return render_template_string(f"API Key: {new_secret}")
